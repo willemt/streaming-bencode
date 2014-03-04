@@ -37,53 +37,116 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "bencode.h"
 
-int __int(bencode_sax_t *s,
+enum {
+    BENCODE_TYPE_INT,
+    BENCODE_TYPE_STR,
+    BENCODE_TYPE_DICT,
+    BENCODE_TYPE_DICTKEY,
+    BENCODE_TYPE_LIST,
+};
+
+typedef struct node_s node_t;
+
+
+struct node_s {
+    int type;
+    int intval;
+    char* strval;
+    char* dictkey;
+    node_t* child;
+    node_t* parent;
+    node_t* next;
+    node_t* prev;
+};
+
+statict node_t* __find_sibling_slot(node_t* n, int depth)
+{
+    if (0 == depth)
+    {
+        while (n->next)
+            n = n->next;
+        n->next = calloc(1, sizeof(node_t));
+        n->prev = n;
+        return n->next;
+    }
+    else
+    {
+        return __find_sibling_slot(n->child, depth - 1);
+    }
+}
+
+statict node_t* __find_child_slot(node_t* n, int depth)
+{
+    if (0 == depth)
+    {
+        while (n->next)
+            n = n->next;
+        n->next = calloc(1, sizeof(node_t));
+        n->prev = n;
+        return n->next;
+    }
+    else
+    {
+        return __find_child_slot(n->child, depth - 1);
+    }
+}
+
+
+int __int(bencode_t *s,
         const char *dict_key,
         const long int val)
 {
+    node_t* n = __find_slot(s->udata, s->d);
+    n->intval = val;
+    n->type = BENCODE_TYPE_INT;
     return 1;
 }
 
-int __str(bencode_sax_t *s,
+int __str(bencode_t *s,
         const char *dict_key,
         unsigned int val_len,
         const unsigned char* val,
         unsigned int len)
 {
+    node_t* n = __find_slot(s->udata, s->d);
+    n->strval = strdup(val);
+    n->type = BENCODE_TYPE_STR;
     return 1;
 }
 
-int __dict_enter(bencode_sax_t *s,
+int __dict_enter(bencode_t *s,
+        const char *dict_key)
+{
+    node_t* n = __find_slot(s->udata, s->d);
+    n->type = BENCODE_TYPE_DICT;
+    return 1;
+}
+
+int __dict_leave(bencode_t *s,
         const char *dict_key)
 {
     return 1;
 }
 
-int __dict_leave(bencode_sax_t *s,
+int __list_enter(bencode_t *s,
         const char *dict_key)
 {
     return 1;
 }
 
-int __list_enter(bencode_sax_t *s,
+int __list_leave(bencode_t *s,
         const char *dict_key)
 {
     return 1;
 }
 
-int __list_leave(bencode_sax_t *s,
+int __list_next(bencode_t *s,
         const char *dict_key)
 {
     return 1;
 }
 
-int __list_next(bencode_sax_t *s,
-        const char *dict_key)
-{
-    return 1;
-}
-
-static bencode_sax_callbacks_t __cb = {
+static bencode_callbacks_t __cb = {
     .hit_int = __int,
     .hit_str = __str,
     .dict_enter = __dict_enter,
@@ -97,26 +160,25 @@ void TestBencode_fail_if_depth_not_sufficient(
     CuTest * tc
 )
 {
-    bencode_sax_t* s;
+    bencode_t* s;
     char* str = "4:test";
 
-    s = bencode_sax_new(0,&__cb);
-    CuAssertTrue(tc, 0 == bencode_sax_dispatch_from_buffer(me, str, strlen(str)));
+    s = bencode_new(0, &__cb);
+    CuAssertTrue(tc, 0 == bencode_dispatch_from_buffer(me, str, strlen(str)));
 }
-
 
 void TestBencodeWontDoShortExpectedLength(
     CuTest * tc
 )
 {
-    bencode_t ben;
+    bencode_t* s;
     char *str = strdup("4:test");
     const char *ren;
     int len;
+    node_t* dom;
 
-    bencode_sax_new(5);
-    bencode_sax_init(ben, str, 3);
-    CuAssertTrue(tc, 0 == bencode_string_value(&ben, &ren, &len));
+    s = bencode_new(2, &__cb);
+    CuAssertTrue(tc, 1 == bencode_dispatch_from_buffer(me, str, strlen(str)));
     free(str);
 }
 

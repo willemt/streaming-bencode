@@ -1,5 +1,5 @@
-#ifndef BENCODE_SAX_H
-#define BENCODE_SAX_H
+#ifndef BENCODE_H
+#define BENCODE_H
 
 enum {
     /* init state */
@@ -26,7 +26,7 @@ typedef struct {
      * @param val The integer value
      * @return 0 on error; otherwise 1
      */
-    int hit_int(bencode_sax_t *s,
+    int hit_int(bencode_t *s,
             const char *dict_key,
             const long int val);
 
@@ -36,7 +36,7 @@ typedef struct {
      * @param val The integer value
      * @return 0 on error; otherwise 1
      */
-    int hit_str(bencode_sax_t *s,
+    int hit_str(bencode_t *s,
         const char *dict_key,
         unsigned int val_len,
         const unsigned char* val,
@@ -48,7 +48,7 @@ typedef struct {
      * @param val The integer value
      * @return 0 on error; otherwise 1
      */
-    int dict_enter(bencode_sax_t *s,
+    int dict_enter(bencode_t *s,
             const char *dict_key);
     /**
      * @param dict_key The dictionary key for this item.
@@ -56,7 +56,7 @@ typedef struct {
      * @param val The integer value
      * @return 0 on error; otherwise 1
      */
-    int dict_leave(bencode_sax_t *s,
+    int dict_leave(bencode_t *s,
             const char *dict_key);
     /**
      * @param dict_key The dictionary key for this item.
@@ -64,7 +64,7 @@ typedef struct {
      * @param val The integer value
      * @return 0 on error; otherwise 1
      */
-    int list_enter(bencode_sax_t *s,
+    int list_enter(bencode_t *s,
             const char *dict_key);
     /**
      * @param dict_key The dictionary key for this item.
@@ -72,15 +72,15 @@ typedef struct {
      * @param val The integer value
      * @return 0 on error; otherwise 1
      */
-    int list_leave(bencode_sax_t *s,
+    int list_leave(bencode_t *s,
             const char *dict_key)
     /**
      * @param val The integer value
      * @return 0 on error; otherwise 1
      */
-    int list_next(bencode_sax_t *s);
+    int list_next(bencode_t *s);
 
-} bencode_sax_callbacks_t;
+} bencode_callbacks_t;
 
 typedef struct {
 
@@ -102,11 +102,11 @@ typedef struct {
     /* user data for context specific to frame */
     void* udata;
 
-} bencode_sax_frame_t;
+} bencode_frame_t;
 
 typedef struct {
     /* stack */
-    bencode_sax_frame_t* stk;
+    bencode_frame_t* stk;
 
     /* number of frames we can push down, ie. maximum depth */
     unsigned int nframes;
@@ -117,7 +117,9 @@ typedef struct {
     /* user data for context */
     void* udata;
 
-} bencode_sax_t;
+    bencode_callbacks_t cb;
+
+} bencode_t;
 
 
 /**
@@ -125,30 +127,31 @@ typedef struct {
  * @param cb The callbacks we need to parse the bencode
  * @return new memory for a bencode sax parser
  */
-bencode_sax_t* bencode_sax_new(
+bencode_t* bencode_new(
         int expected_depth,
-        bencode_sax_callbacks_t* cb);
+        bencode_callbacks_t* cb,
+        void* udata);
 
 /**
  * Initialise reader
  */
-void bencode_sax_init(bencode_sax_t*);
+void bencode_init(bencode_t*);
 
 /**
  * @param buf The buffer to read new input from
  * @param len The size of the buffer
  * @return 0 on error; otherwise 1
  */
-int bencode_sax_dispatch_from_buffer(
-        bencode_sax_t*,
+int bencode_dispatch_from_buffer(
+        bencode_t*,
         const char* buf,
         unsigned int len);
 /**
  * @param cb The callbacks we need to parse the bencode
  */
-void bencode_sax_set_callbacks(
-        bencode_sax_t*,
-        bencode_sax_callbacks_t* cb);
+void bencode_set_callbacks(
+        bencode_t*,
+        bencode_callbacks_t* cb);
 
 
-#endif /* BENCODE_SAX_H */
+#endif /* BENCODE_H */
