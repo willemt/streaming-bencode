@@ -1,6 +1,23 @@
 #ifndef BENCODE_SAX_H
 #define BENCODE_SAX_H
 
+enum {
+    /* init state */
+    BENCODE_TOK_NONE,
+    /* a list */
+    BENCODE_TOK_LIST,
+    /* the length of a dictionary key */
+    BENCODE_TOK_DICT_KEYLEN,
+    /* a dictionary key */
+    BENCODE_TOK_DICT_KEY,
+    /* an integer */
+    BENCODE_TOK_INT,
+    /* the length of the string */
+    BENCODE_TOK_STR_LEN,
+    /* string */
+    BENCODE_TOK_STR
+}; 
+
 typedef struct {
 
     /**
@@ -66,10 +83,25 @@ typedef struct {
 } bencode_sax_callbacks_t;
 
 typedef struct {
-    char* dictkey;
+
+    /* dict key */
+    char* key;
+
+    /* length of key buffer */
+    int keylen;
+
+    long int intval;
+
+//    int len;
+
+    int pos;
+
+    /* token type */
+    int type;
 
     /* user data for context specific to frame */
     void* udata;
+
 } bencode_sax_frame_t;
 
 typedef struct {
@@ -84,6 +116,7 @@ typedef struct {
 
     /* user data for context */
     void* udata;
+
 } bencode_sax_t;
 
 

@@ -17,6 +17,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <ctype.h>
+#include <math.h>
 
 #include "bencode.h"
 
@@ -33,6 +34,152 @@ void bencode_init(bencode_t*)
 
 }
 
+static bencode_frame_t* __push_stack(bencode_t* me)
+{
+    me->d++;
+    if (me->nframes <= me->d)
+        return NULL;
+    memset(&me->stk[me->d], 0, sizeof(bencode_frame_t));
+    return &me->stk[me->d];
+}
+
+static bencode_frame_t* __pop_stack(bencode_t* me)
+{
+    me->d--;
+    if (me->d < 0)
+        return NULL;
+    return &me->stk[me->d];
+}
+
+int __process_tok(
+        bencode_t* me,
+        const char** buf,
+        unsigned int *len)
+{
+    bencode_frame_t* f = &me->stk[me->d];
+
+    switch (f->type)
+    {
+    case BENCODE_TOK_NONE:
+        switch (*buf)
+        {
+        case 'i':
+            f = __push_stack(me);
+            f->type = BENCODE_TOK_INT;
+            f->pos = 0;
+            break;
+        case 'd':
+            f = __push_stack(me);
+            f->type = BENCODE_TOK_DICT;
+            f->pos = 0;
+            break;
+        case 'l':
+            f = __push_stack(me);
+            f->type = BENCODE_TOK_LIST;
+            f->pos = 0;
+            break;
+        case isdigit(*buf):
+            f = __push_stack(me);
+            f->type = BENCODE_TOK_STR_LEN;
+            f->pos = 0;
+            f->len += (*sp - '0') * pow(10, f->pos++);
+            break;
+        default: assert(0); break;
+        }
+        break;
+
+    case BENCODE_TOK_INT:
+        if ('e' == *buf)
+        {
+            // OUTPUT INT
+            // POP stack
+            f->type = BENCODE_TOK_NONE;
+        }
+        else if (isdigit(*buf))
+        {
+            f->intval += (*sp - '0') * pow(10, f->pos++);
+        }
+        else
+        {
+            assert(0);
+        }
+        break;
+
+    case BENCODE_TOK_STR_LEN:
+        if (':' == *buf)
+        {
+            f->type = BENCODE_TOK_STR;
+            f->pos = 0;
+        }
+        else if (isdigit(*buf))
+        {
+            f->len += (*sp - '0') * pow(10, f->pos++);
+        }
+        else
+        {
+            assert(0);
+        }
+
+        break;
+
+    case BENCODE_TOK_STR:
+        if (f->len == f->pos)
+        {
+
+        }
+        if (':' == *buf)
+        {
+            f->type = BENCODE_TOK_STR;
+            f->pos = 0;
+        }
+        else if (isdigit(*buf))
+        {
+            f->len += (*sp - '0') * pow(10, f->pos++);
+        }
+        else
+        {
+            assert(0);
+        }
+
+        break;
+    case BENCODE_TOK_DICT_KEYLEN:
+        if (':' == *buf)
+        {
+            f->type = BENCODE_TOK_DICT_KEY;
+            f->pos = 0;
+        }
+        else if (isdigit(*buf))
+        {
+            f->len += (*sp - '0') * pow(10, f->pos++);
+        }
+        else
+        {
+            assert(0);
+        }
+
+
+        break;
+    case BENCODE_TOK_DICT_KEY:
+        if (f->pos == f->len)
+        {
+            f->key[f->pos] = '\0';
+            printf("END DICT KEY %s\n", f->key);
+            f = __push_stack(me);
+        }
+        else
+        {
+            assert(0);
+        }
+        break;
+
+    default: assert(0); break;
+    }
+
+    *buf++;
+    *len -= 1;
+}
+
+
 int bencode_dispatch_from_buffer(
         bencode_t* me,
         const char* buf,
@@ -41,9 +188,7 @@ int bencode_dispatch_from_buffer(
     if (me->nframes <= me->d)
         return 0;
 
-    bencode_frame_t* f = &me->stk[me->d];
-
-
+    __process_tok(&buf,&len);
 
     return 0;
 }
