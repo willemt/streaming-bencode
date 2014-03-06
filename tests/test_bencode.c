@@ -149,7 +149,7 @@ void TestBencode_fail_if_depth_not_sufficient(
     char* str = "4:test";
 
     s = bencode_new(0, &__cb, NULL);
-    CuAssertTrue(tc, 0 == bencode_dispatch_from_buffer(me, str, strlen(str)));
+    CuAssertTrue(tc, 0 == bencode_dispatch_from_buffer(s, str, strlen(str)));
 }
 
 void TestBencode_string(
@@ -168,7 +168,7 @@ void TestBencodeIntValue(
     node_t* dom = calloc(1,sizeof(node_t));
 
     s = bencode_new(2, &__cb, dom);
-    CuAssertTrue(tc, 1 == bencode_dispatch_from_buffer(me, str, strlen(str)));
+    CuAssertTrue(tc, 1 == bencode_dispatch_from_buffer(s, str, strlen(str)));
     CuAssertTrue(tc, dom->type == BENCODE_TYPE_INT);
     CuAssertTrue(tc, 777 == dom->intval);
 }
@@ -182,7 +182,7 @@ void TestBencodeIntValue2(
     node_t* dom = calloc(1,sizeof(node_t));
 
     s = bencode_new(2, &__cb, dom);
-    CuAssertTrue(tc, 1 == bencode_dispatch_from_buffer(me, str, strlen(str)));
+    CuAssertTrue(tc, 1 == bencode_dispatch_from_buffer(s, str, strlen(str)));
     CuAssertTrue(tc, dom->type == BENCODE_TYPE_INT);
     CuAssertTrue(tc, 102030 == dom->intval);
 }
@@ -196,7 +196,7 @@ void TestBencodeIntValueLarge(
     node_t* dom = calloc(1,sizeof(node_t));
 
     s = bencode_new(2, &__cb, dom);
-    CuAssertTrue(tc, 1 == bencode_dispatch_from_buffer(me, str, strlen(str)));
+    CuAssertTrue(tc, 1 == bencode_dispatch_from_buffer(s, str, strlen(str)));
     CuAssertTrue(tc, dom->type == BENCODE_TYPE_INT);
 }
 
@@ -209,7 +209,7 @@ void TestBencodeIsIntEmpty(
     node_t* dom = calloc(1,sizeof(node_t));
 
     s = bencode_new(2, &__cb, dom);
-    CuAssertTrue(tc, 1 == bencode_dispatch_from_buffer(me, str, strlen(str)));
+    CuAssertTrue(tc, 1 == bencode_dispatch_from_buffer(s, str, strlen(str)));
     CuAssertTrue(tc, dom->type == BENCODE_TYPE_NONE);
 }
 
@@ -222,7 +222,7 @@ void TestBencodeStringValue(
     node_t* dom = calloc(1,sizeof(node_t));
 
     s = bencode_new(2, &__cb, dom);
-    CuAssertTrue(tc, 1 == bencode_dispatch_from_buffer(me, str, strlen(str)));
+    CuAssertTrue(tc, 1 == bencode_dispatch_from_buffer(s, str, strlen(str)));
     CuAssertTrue(tc, dom->type == BENCODE_TYPE_STR);
     CuAssertTrue(tc, 0 == strcmp(dom->strval, "test"));
 }
@@ -236,7 +236,7 @@ void TestBencodeStringValue2(
     node_t* dom = calloc(1,sizeof(node_t));
 
     s = bencode_new(2, &__cb, dom);
-    CuAssertTrue(tc, 1 == bencode_dispatch_from_buffer(me, str, strlen(str)));
+    CuAssertTrue(tc, 1 == bencode_dispatch_from_buffer(s, str, strlen(str)));
     CuAssertTrue(tc, dom->type == BENCODE_TYPE_STR);
     CuAssertTrue(tc, 0 == strcmp(dom->strval, "12:flyinganimal"));
 }
@@ -258,7 +258,7 @@ void T_estBencodeStringInvalid(
     node_t* dom = calloc(1,sizeof(node_t));
 
     s = bencode_new(2, &__cb, dom);
-    CuAssertTrue(tc, 1 == bencode_dispatch_from_buffer(me, str, strlen(str)));
+    CuAssertTrue(tc, 1 == bencode_dispatch_from_buffer(s, str, strlen(str)));
     CuAssertTrue(tc, dom->type == BENCODE_TYPE_STR);
     CuAssertTrue(tc, 0 == strcmp(dom->strval, "12:flyinganimal"));
 }
@@ -281,7 +281,7 @@ void TestBencodeStringHandlesNonAscii0(
     str[7] = 80;
 
     s = bencode_new(2, &__cb, dom);
-    CuAssertTrue(tc, 1 == bencode_dispatch_from_buffer(me, str, strlen(str)));
+    CuAssertTrue(tc, 1 == bencode_dispatch_from_buffer(s, str, strlen(str)));
     CuAssertTrue(tc, dom->type == BENCODE_TYPE_STR);
     CuAssertTrue(tc, dom->strval[0] == 127);
     CuAssertTrue(tc, dom->strval[1] == 0);
@@ -300,7 +300,7 @@ void TestBencodeIsList(
     node_t* dom = calloc(1,sizeof(node_t));
 
     s = bencode_new(2, &__cb, dom);
-    CuAssertTrue(tc, 1 == bencode_dispatch_from_buffer(me, str, strlen(str)));
+    CuAssertTrue(tc, 1 == bencode_dispatch_from_buffer(s, str, strlen(str)));
     CuAssertTrue(tc, dom->type == BENCODE_TYPE_LIST);
 }
 
@@ -314,7 +314,7 @@ void TestBencodeListGetNext(
     node_t* dom = calloc(1,sizeof(node_t));
 
     s = bencode_new(2, &__cb, dom);
-    CuAssertTrue(tc, 1 == bencode_dispatch_from_buffer(me, str, strlen(str)));
+    CuAssertTrue(tc, 1 == bencode_dispatch_from_buffer(s, str, strlen(str)));
     CuAssertTrue(tc, dom->type == BENCODE_TYPE_LIST);
     CuAssertTrue(tc, dom->child != NULL);
     CuAssertTrue(tc, dom->child->type == BENCODE_TYPE_STR);
@@ -331,7 +331,7 @@ void TestBencodeListInListWithValue(
     node_t* dom = calloc(1,sizeof(node_t));
 
     s = bencode_new(2, &__cb, dom);
-    CuAssertTrue(tc, 1 == bencode_dispatch_from_buffer(me, str, strlen(str)));
+    CuAssertTrue(tc, 1 == bencode_dispatch_from_buffer(s, str, strlen(str)));
     CuAssertTrue(tc, dom->type == BENCODE_TYPE_LIST);
     CuAssertTrue(tc, dom->child != NULL);
     CuAssertTrue(tc, dom->child->type == BENCODE_TYPE_LIST);
@@ -349,7 +349,7 @@ void TestBencodeListDoesntHasNextWhenEmpty(
     node_t* dom = calloc(1,sizeof(node_t));
 
     s = bencode_new(2, &__cb, dom);
-    CuAssertTrue(tc, 1 == bencode_dispatch_from_buffer(me, str, strlen(str)));
+    CuAssertTrue(tc, 1 == bencode_dispatch_from_buffer(s, str, strlen(str)));
     CuAssertTrue(tc, dom->type == BENCODE_TYPE_LIST);
     CuAssertTrue(tc, dom->child == NULL);
 }
@@ -363,7 +363,7 @@ void TestBencodeEmptyListInListWontGetNextIfEmpty(
     node_t* dom = calloc(1,sizeof(node_t));
 
     s = bencode_new(2, &__cb, dom);
-    CuAssertTrue(tc, 1 == bencode_dispatch_from_buffer(me, str, strlen(str)));
+    CuAssertTrue(tc, 1 == bencode_dispatch_from_buffer(s, str, strlen(str)));
     CuAssertTrue(tc, dom->type == BENCODE_TYPE_LIST);
     CuAssertTrue(tc, dom->child != NULL);
     CuAssertTrue(tc, dom->child->type == BENCODE_TYPE_LIST);
@@ -379,7 +379,7 @@ void TestBencodeEmptyListInListWontGetNextTwiceIfEmpty(
     node_t* dom = calloc(1,sizeof(node_t));
 
     s = bencode_new(2, &__cb, dom);
-    CuAssertTrue(tc, 1 == bencode_dispatch_from_buffer(me, str, strlen(str)));
+    CuAssertTrue(tc, 1 == bencode_dispatch_from_buffer(s, str, strlen(str)));
     CuAssertTrue(tc, dom->type == BENCODE_TYPE_LIST);
     CuAssertTrue(tc, dom->child != NULL);
     CuAssertTrue(tc, dom->child->type == BENCODE_TYPE_LIST);
@@ -396,7 +396,7 @@ void TestBencodeListGetNextTwiceWhereOnlyOneAvailable(
     node_t* dom = calloc(1,sizeof(node_t));
 
     s = bencode_new(2, &__cb, dom);
-    CuAssertTrue(tc, 1 == bencode_dispatch_from_buffer(me, str, strlen(str)));
+    CuAssertTrue(tc, 1 == bencode_dispatch_from_buffer(s, str, strlen(str)));
     CuAssertTrue(tc, dom->type == BENCODE_TYPE_LIST);
     CuAssertTrue(tc, dom->child != NULL);
     CuAssertTrue(tc, dom->child->type == BENCODE_TYPE_STR);
@@ -412,7 +412,7 @@ void TestBencodeListGetNextTwice(
     node_t* dom = calloc(1,sizeof(node_t));
 
     s = bencode_new(2, &__cb, dom);
-    CuAssertTrue(tc, 1 == bencode_dispatch_from_buffer(me, str, strlen(str)));
+    CuAssertTrue(tc, 1 == bencode_dispatch_from_buffer(s, str, strlen(str)));
     CuAssertTrue(tc, dom->type == BENCODE_TYPE_LIST);
     CuAssertTrue(tc, dom->child != NULL);
     CuAssertTrue(tc, dom->child->type == BENCODE_TYPE_STR);
@@ -444,7 +444,7 @@ void TestBencodeDictGetNext(
     node_t* dom = calloc(1,sizeof(node_t));
 
     s = bencode_new(2, &__cb, dom);
-    CuAssertTrue(tc, 1 == bencode_dispatch_from_buffer(me, str, strlen(str)));
+    CuAssertTrue(tc, 1 == bencode_dispatch_from_buffer(s, str, strlen(str)));
     CuAssertTrue(tc, dom->type == BENCODE_TYPE_DICT);
     CuAssertTrue(tc, dom->child != NULL);
     CuAssertTrue(tc, dom->child->type == BENCODE_TYPE_STR);
@@ -461,7 +461,7 @@ void TestBencodeDictWontGetNextIfEmpty(
     node_t* dom = calloc(1,sizeof(node_t));
 
     s = bencode_new(2, &__cb, dom);
-    CuAssertTrue(tc, 1 == bencode_dispatch_from_buffer(me, str, strlen(str)));
+    CuAssertTrue(tc, 1 == bencode_dispatch_from_buffer(s, str, strlen(str)));
     CuAssertTrue(tc, dom->type == BENCODE_TYPE_DICT);
     CuAssertTrue(tc, dom->child == NULL);
 }
@@ -475,7 +475,7 @@ void TestBencodeDictGetNextTwice(
     node_t* dom = calloc(1,sizeof(node_t));
 
     s = bencode_new(2, &__cb, dom);
-    CuAssertTrue(tc, 1 == bencode_dispatch_from_buffer(me, str, strlen(str)));
+    CuAssertTrue(tc, 1 == bencode_dispatch_from_buffer(s, str, strlen(str)));
     CuAssertTrue(tc, dom->type == BENCODE_TYPE_DICT);
     CuAssertTrue(tc, dom->child != NULL);
     CuAssertTrue(tc, dom->child->type == BENCODE_TYPE_STR);
@@ -496,7 +496,7 @@ void TestBencodeDictGetNextTwiceOnlyIfSecondKeyValid(
     node_t* dom = calloc(1,sizeof(node_t));
 
     s = bencode_new(2, &__cb, dom);
-    CuAssertTrue(tc, 1 == bencode_dispatch_from_buffer(me, str, strlen(str)));
+    CuAssertTrue(tc, 1 == bencode_dispatch_from_buffer(s, str, strlen(str)));
     CuAssertTrue(tc, dom->type == BENCODE_TYPE_DICT);
     CuAssertTrue(tc, dom->child != NULL);
     CuAssertTrue(tc, dom->child->type == BENCODE_TYPE_STR);
@@ -514,7 +514,7 @@ void TestBencodeDictGetNextInnerList(
     node_t* dom = calloc(1,sizeof(node_t));
 
     s = bencode_new(2, &__cb, dom);
-    CuAssertTrue(tc, 1 == bencode_dispatch_from_buffer(me, str, strlen(str)));
+    CuAssertTrue(tc, 1 == bencode_dispatch_from_buffer(s, str, strlen(str)));
     CuAssertTrue(tc, dom->type == BENCODE_TYPE_DICT);
     CuAssertTrue(tc, dom->child != NULL);
     CuAssertTrue(tc, dom->child->type == BENCODE_TYPE_LIST);
@@ -536,7 +536,7 @@ void TestBencodeDictInnerList(
     node_t* dom = calloc(1,sizeof(node_t));
 
     s = bencode_new(2, &__cb, dom);
-    CuAssertTrue(tc, 1 == bencode_dispatch_from_buffer(me, str, strlen(str)));
+    CuAssertTrue(tc, 1 == bencode_dispatch_from_buffer(s, str, strlen(str)));
     CuAssertTrue(tc, dom->type == BENCODE_TYPE_DICT);
 
     CuAssertTrue(tc, dom->child != NULL);
@@ -566,7 +566,7 @@ void TestBencodeStringValueIsZeroLength(
     node_t* dom = calloc(1,sizeof(node_t));
 
     s = bencode_new(2, &__cb, dom);
-    CuAssertTrue(tc, 1 == bencode_dispatch_from_buffer(me, str, strlen(str)));
+    CuAssertTrue(tc, 1 == bencode_dispatch_from_buffer(s, str, strlen(str)));
     CuAssertTrue(tc, dom->type == BENCODE_TYPE_DICT);
 
     CuAssertTrue(tc, dom->child != NULL);
