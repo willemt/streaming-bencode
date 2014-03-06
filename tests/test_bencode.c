@@ -86,47 +86,46 @@ int __int(bencode_t *s,
 
 int __str(bencode_t *s,
         const char *dict_key,
-        unsigned int val_len,
+        unsigned int val_len __attribute__((__unused__)),
         const unsigned char* val,
-        unsigned int len)
+        unsigned int len __attribute__((__unused__))) 
 {
     node_t* n = __find_sibling_slot(s->udata, s->d);
-    n->strval = strdup(val);
+    n->strval = strdup((const char*)val);
     n->dictkey = dict_key ? strdup(dict_key) : NULL;
     n->type = BENCODE_TYPE_STR;
     return 1;
 }
 
 int __dict_enter(bencode_t *s,
-        const char *dict_key)
+        const char *dict_key __attribute__((__unused__)))
 {
     node_t* n = __find_child_slot(s->udata, s->d);
     n->type = BENCODE_TYPE_DICT;
     return 1;
 }
 
-int __dict_leave(bencode_t *s,
-        const char *dict_key)
+int __dict_leave(bencode_t *s __attribute__((__unused__)),
+        const char *dict_key __attribute__((__unused__)))
 {
     return 1;
 }
 
 int __list_enter(bencode_t *s,
-        const char *dict_key)
+        const char *dict_key __attribute__((__unused__)))
 {
     node_t* n = __find_child_slot(s->udata, s->d);
     n->type = BENCODE_TYPE_LIST;
     return 1;
 }
 
-int __list_leave(bencode_t *s,
-        const char *dict_key)
+int __list_leave(bencode_t *s __attribute__((__unused__)),
+        const char *dict_key __attribute__((__unused__)))
 {
     return 1;
 }
 
-int __list_next(bencode_t *s,
-        const char *dict_key)
+int __list_next(bencode_t *s __attribute__((__unused__)))
 {
     return 1;
 }
@@ -150,13 +149,6 @@ void TestBencode_fail_if_depth_not_sufficient(
 
     s = bencode_new(0, &__cb, NULL);
     CuAssertTrue(tc, 0 == bencode_dispatch_from_buffer(s, str, strlen(str)));
-}
-
-void TestBencode_string(
-    CuTest * tc
-)
-{
-
 }
 
 void TestBencodeIntValue(
@@ -241,7 +233,6 @@ void TestBencodeStringValue2(
     CuAssertTrue(tc, 0 == strcmp(dom->strval, "12:flyinganimal"));
 }
 
-#if 0
 /**
  * The string value function errors when the string is of insufficient length
  * */
@@ -249,10 +240,6 @@ void T_estBencodeStringInvalid(
     CuTest * tc
 )
 {
-    bencode_t ben;
-
-    char *str = strdup("5:test");
-
     bencode_t* s;
     char *str = "5:flyinganimal";
     node_t* dom = calloc(1,sizeof(node_t));
@@ -262,7 +249,6 @@ void T_estBencodeStringInvalid(
     CuAssertTrue(tc, dom->type == BENCODE_TYPE_STR);
     CuAssertTrue(tc, 0 == strcmp(dom->strval, "12:flyinganimal"));
 }
-#endif
 
 void TestBencodeStringHandlesNonAscii0(
     CuTest * tc
@@ -304,7 +290,6 @@ void TestBencodeIsList(
     CuAssertTrue(tc, dom->type == BENCODE_TYPE_LIST);
 }
 
-#if 0
 void TestBencodeListGetNext(
     CuTest * tc
 )
@@ -419,7 +404,8 @@ void TestBencodeListGetNextTwice(
     CuAssertTrue(tc, 0 == strcmp(dom->child->strval,"test"));
 }
 
-void TestBencodeListGetNextAtInvalidEnd(
+#if 0
+void T_estBencodeListGetNextAtInvalidEnd(
     CuTest * tc
 )
 {
@@ -434,6 +420,7 @@ void TestBencodeListGetNextAtInvalidEnd(
 
     free(str);
 }
+#endif
 
 void TestBencodeDictGetNext(
     CuTest * tc
@@ -579,4 +566,3 @@ void TestBencodeStringValueIsZeroLength(
     CuAssertTrue(tc, 0 == strcmp(dom->child->next->strval,""));
     CuAssertTrue(tc, 0 == strcmp(dom->child->next->dictkey,""));
 }
-#endif
