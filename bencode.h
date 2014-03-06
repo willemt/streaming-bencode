@@ -18,6 +18,8 @@ enum {
     BENCODE_TOK_STR
 }; 
 
+typedef struct bencode_s bencode_t;
+
 typedef struct {
 
     /**
@@ -26,7 +28,7 @@ typedef struct {
      * @param val The integer value
      * @return 0 on error; otherwise 1
      */
-    int hit_int(bencode_t *s,
+    int (*hit_int)(bencode_t *s,
             const char *dict_key,
             const long int val);
 
@@ -36,7 +38,7 @@ typedef struct {
      * @param val The integer value
      * @return 0 on error; otherwise 1
      */
-    int hit_str(bencode_t *s,
+    int (*hit_str)(bencode_t *s,
         const char *dict_key,
         unsigned int val_len,
         const unsigned char* val,
@@ -48,7 +50,7 @@ typedef struct {
      * @param val The integer value
      * @return 0 on error; otherwise 1
      */
-    int dict_enter(bencode_t *s,
+    int (*dict_enter)(bencode_t *s,
             const char *dict_key);
     /**
      * @param dict_key The dictionary key for this item.
@@ -56,7 +58,7 @@ typedef struct {
      * @param val The integer value
      * @return 0 on error; otherwise 1
      */
-    int dict_leave(bencode_t *s,
+    int (*dict_leave)(bencode_t *s,
             const char *dict_key);
     /**
      * @param dict_key The dictionary key for this item.
@@ -64,7 +66,7 @@ typedef struct {
      * @param val The integer value
      * @return 0 on error; otherwise 1
      */
-    int list_enter(bencode_t *s,
+    int (*list_enter)(bencode_t *s,
             const char *dict_key);
     /**
      * @param dict_key The dictionary key for this item.
@@ -72,13 +74,13 @@ typedef struct {
      * @param val The integer value
      * @return 0 on error; otherwise 1
      */
-    int list_leave(bencode_t *s,
-            const char *dict_key)
+    int (*list_leave)(bencode_t *s,
+            const char *dict_key);
     /**
      * @param val The integer value
      * @return 0 on error; otherwise 1
      */
-    int list_next(bencode_t *s);
+    int (*list_next)(bencode_t *s);
 
 } bencode_callbacks_t;
 
@@ -88,11 +90,11 @@ typedef struct {
     char* key;
 
     /* length of key buffer */
-    int keylen;
+//    int keylen;
 
     long int intval;
 
-//    int len;
+    int len;
 
     int pos;
 
@@ -104,7 +106,7 @@ typedef struct {
 
 } bencode_frame_t;
 
-typedef struct {
+struct bencode_s {
     /* stack */
     bencode_frame_t* stk;
 
@@ -118,8 +120,7 @@ typedef struct {
     void* udata;
 
     bencode_callbacks_t cb;
-
-} bencode_t;
+};
 
 
 /**

@@ -30,12 +30,14 @@ bencode_t* bencode_new(
     me = calloc(1, sizeof(bencode_t));
     me->udata = udata;
     bencode_set_callbacks(me, cb);
+    me->nframes = expected_depth;
+    me->stk = calloc(1, sizeof(bencode_frame_t) * expected_depth);
     return me;
 }
 
-void bencode_init(bencode_t*)
+void bencode_init(bencode_t* me)
 {
-
+    memset(me,0,sizeof(bencode_t));
 }
 
 static bencode_frame_t* __push_stack(bencode_t* me)
@@ -55,6 +57,11 @@ static bencode_frame_t* __pop_stack(bencode_t* me)
     return &me->stk[me->d];
 }
 
+static int __parse_digit(const char c, int pos)
+{
+    return (c - '0') * pow(10, pos);
+}
+
 int __process_tok(
         bencode_t* me,
         const char** buf,
@@ -64,15 +71,15 @@ int __process_tok(
 
     switch (f->type)
     {
-    case BENCODE_LIST:
-        switch (*buf)
+    case BENCODE_TOK_LIST:
+        switch (**buf)
         {
         case 'e':
             __pop_stack(me);
             break;
         }
     case BENCODE_TOK_NONE:
-        switch (*buf)
+        switch (**buf)
         {
         case 'i':
             f = __push_stack(me);
@@ -81,7 +88,7 @@ int __process_tok(
             break;
         case 'd':
             f = __push_stack(me);
-            f->type = BENCODE_TOK_DICT;
+            f->type = BENCODE_TOK_DICT_KEYLEN;
             f->pos = 0;
             break;
         case 'l':
@@ -89,31 +96,38 @@ int __process_tok(
             f->type = BENCODE_TOK_LIST;
             f->pos = 0;
             break;
-        case isdigit(*buf):
-            f = __push_stack(me);
-            f->type = BENCODE_TOK_STR_LEN;
-            f->pos = 0;
-            f->len += (*sp - '0') * pow(10, f->pos++);
-            break;
+
         case 'e':
             f = __push_stack(me);
-            f->type = BENCODE_TOK_DICT;
+            f->type = BENCODE_TOK_DICT_KEYLEN;
             f->pos = 0;
             break;
-        default: assert(0); break;
+        default:
+            if (isdigit(**buf))
+            {
+                f = __push_stack(me);
+                f->type = BENCODE_TOK_STR_LEN;
+                f->pos = 0;
+                f->len += __parse_digit(**buf, f->pos++);
+            }
+            else
+            {
+                assert(0);
+            }
+            break;
         }
         break;
 
     case BENCODE_TOK_INT:
-        if ('e' == *buf)
+        if ('e' == **buf)
         {
             // OUTPUT INT
             // POP stack
             f->type = BENCODE_TOK_NONE;
         }
-        else if (isdigit(*buf))
+        else if (isdigit(**buf))
         {
-            f->intval += (*sp - '0') * pow(10, f->pos++);
+            f->intval += __parse_digit(**buf, f->pos++);
         }
         else
         {
@@ -122,14 +136,14 @@ int __process_tok(
         break;
 
     case BENCODE_TOK_STR_LEN:
-        if (':' == *buf)
+        if (':' == **buf)
         {
             f->type = BENCODE_TOK_STR;
             f->pos = 0;
         }
-        else if (isdigit(*buf))
+        else if (isdigit(**buf))
         {
-            f->len += (*sp - '0') * pow(10, f->pos++);
+            f->len += __parse_digit(**buf, f->pos++);
         }
         else
         {
@@ -143,14 +157,14 @@ int __process_tok(
         {
 
         }
-        if (':' == *buf)
+        if (':' == **buf)
         {
             f->type = BENCODE_TOK_STR;
             f->pos = 0;
         }
-        else if (isdigit(*buf))
+        else if (isdigit(**buf))
         {
-            f->len += (*sp - '0') * pow(10, f->pos++);
+            f->len += __parse_digit(**buf, f->pos++);
         }
         else
         {
@@ -159,16 +173,16 @@ int __process_tok(
 
         break;
     case BENCODE_TOK_DICT_KEYLEN:
-        if (':' == *buf)
+        if (':' == **buf)
         {
             f->type = BENCODE_TOK_DICT_KEY;
             f->pos = 0;
         }
-        else if (isdigit(*buf))
+        else if (isdigit(**buf))
         {
-            f->len += (*sp - '0') * pow(10, f->pos++);
+            f->len += __parse_digit(**buf, f->pos++);
         }
-        else if ('e' == *buf)
+        else if ('e' == **buf)
         {
             f = __pop_stack(me);
         }
@@ -194,7 +208,7 @@ int __process_tok(
     default: assert(0); break;
     }
 
-    *buf++;
+    (*buf)++;
     *len -= 1;
 
     return 1;
@@ -209,7 +223,7 @@ int bencode_dispatch_from_buffer(
         return 0;
 
     while (0 < len)
-        __process_tok(&buf,&len);
+        __process_tok(me,&buf,&len);
 
     return 0;
 }
@@ -218,6 +232,6 @@ void bencode_set_callbacks(
         bencode_t* me,
         bencode_callbacks_t* cb)
 {
-     memcpy(&me->cb,sizeof(bencode_callbacks_t));
+     memcpy(&me->cb,cb,sizeof(bencode_callbacks_t));
 }
 
