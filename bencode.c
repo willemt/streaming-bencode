@@ -28,8 +28,8 @@ bencode_t* bencode_new(
     bencode_t* me;
 
     me = calloc(1, sizeof(bencode_t));
-    me->udata = udata;
     bencode_set_callbacks(me, cb);
+    me->udata = udata;
     me->nframes = expected_depth;
     me->stk = calloc(1, sizeof(bencode_frame_t) * expected_depth);
     return me;
@@ -74,6 +74,7 @@ int __process_tok(
     case BENCODE_TOK_LIST:
         switch (**buf)
         {
+        /* end of list */
         case 'e':
             __pop_stack(me);
             break;
@@ -112,6 +113,7 @@ int __process_tok(
             }
             else
             {
+                printf("%c\n", **buf);
                 assert(0);
             }
             break;
