@@ -82,20 +82,30 @@ int __process_tok(
     case BENCODE_TOK_NONE:
         switch (**buf)
         {
+
+        /* starting an integer */
         case 'i':
             f = __push_stack(me);
             f->type = BENCODE_TOK_INT;
             f->pos = 0;
             break;
+
+        /* starting a dictionary */
         case 'd':
             f = __push_stack(me);
             f->type = BENCODE_TOK_DICT_KEYLEN;
             f->pos = 0;
+            if (f->cb.dict_enter)
+                f->cb.dict_enter(me, NULL);
             break;
+
+        /* starting a list */
         case 'l':
             f = __push_stack(me);
             f->type = BENCODE_TOK_LIST;
             f->pos = 0;
+            if (f->cb.list_enter)
+                f->cb.list_enter(me, NULL);
             break;
 
         case 'e':
@@ -103,6 +113,8 @@ int __process_tok(
             f->type = BENCODE_TOK_DICT_KEYLEN;
             f->pos = 0;
             break;
+
+        /* calculating length of string */
         default:
             if (isdigit(**buf))
             {
@@ -158,7 +170,7 @@ int __process_tok(
     case BENCODE_TOK_STR:
         if (f->len == f->pos)
         {
-
+            f->cb.hit_str(me, NULL, f->len, f->intval);
         }
         if (':' == **buf)
         {

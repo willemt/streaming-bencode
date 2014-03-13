@@ -35,7 +35,7 @@ typedef struct {
     /**
      * @param dict_key The dictionary key for this item.
      *        This is set to null for list entries
-     * @param val The integer value
+     * @param val The string value
      * @return 0 on error; otherwise 1
      */
     int (*hit_str)(bencode_t *s,
