@@ -126,6 +126,7 @@ int __process_tok(
             // OUTPUT INT
             // POP stack
             f->type = BENCODE_TOK_NONE;
+            f->cb.hit_int(me, NULL, f->intval);
         }
         else if (isdigit(**buf))
         {
