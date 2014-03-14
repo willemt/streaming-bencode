@@ -95,8 +95,8 @@ int __process_tok(
             f = __push_stack(me);
             f->type = BENCODE_TOK_DICT_KEYLEN;
             f->pos = 0;
-            if (f->cb.dict_enter)
-                f->cb.dict_enter(me, NULL);
+            if (me->cb.dict_enter)
+                me->cb.dict_enter(me, NULL);
             break;
 
         /* starting a list */
@@ -104,8 +104,8 @@ int __process_tok(
             f = __push_stack(me);
             f->type = BENCODE_TOK_LIST;
             f->pos = 0;
-            if (f->cb.list_enter)
-                f->cb.list_enter(me, NULL);
+            if (me->cb.list_enter)
+                me->cb.list_enter(me, NULL);
             break;
 
         case 'e':
@@ -138,7 +138,7 @@ int __process_tok(
             // OUTPUT INT
             // POP stack
             f->type = BENCODE_TOK_NONE;
-            f->cb.hit_int(me, NULL, f->intval);
+            me->cb.hit_int(me, NULL, f->intval);
         }
         else if (isdigit(**buf))
         {
@@ -170,7 +170,7 @@ int __process_tok(
     case BENCODE_TOK_STR:
         if (f->len == f->pos)
         {
-            f->cb.hit_str(me, NULL, f->len, f->intval);
+            me->cb.hit_str(me, NULL, f->len, f->intval);
         }
         if (':' == **buf)
         {
