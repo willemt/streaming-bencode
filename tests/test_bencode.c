@@ -43,6 +43,7 @@ struct node_s {
 
 static node_t* __find_sibling_slot(node_t* n, int depth)
 {
+    assert(n);
     if (0 == depth)
     {
         while (n->next)
@@ -53,6 +54,11 @@ static node_t* __find_sibling_slot(node_t* n, int depth)
     }
     else
     {
+        if (!n->child)
+        {
+            n->child = calloc(1, sizeof(node_t));
+            n->parent = n;
+        }
         return __find_sibling_slot(n->child, depth - 1);
     }
 }
@@ -69,6 +75,11 @@ static node_t* __find_child_slot(node_t* n, int depth)
     }
     else
     {
+        if (!n->child)
+        {
+            n->child = calloc(1, sizeof(node_t));
+            n->parent = n;
+        }
         return __find_child_slot(n->child, depth - 1);
     }
 }
@@ -77,6 +88,7 @@ int __int(bencode_t *s,
         const char *dict_key,
         const long int val)
 {
+    printf("depth: %d\n", s->d);
     node_t* n = __find_sibling_slot(s->udata, s->d);
     n->intval = val;
     n->dictkey = dict_key ? strdup(dict_key) : NULL;
@@ -201,7 +213,7 @@ void TestBencodeIsIntEmpty(
     node_t* dom = calloc(1,sizeof(node_t));
 
     s = bencode_new(2, &__cb, dom);
-    CuAssertTrue(tc, 1 == bencode_dispatch_from_buffer(s, str, strlen(str)));
+    CuAssertTrue(tc, 0 == bencode_dispatch_from_buffer(s, str, strlen(str)));
     CuAssertTrue(tc, dom->type == BENCODE_TYPE_NONE);
 }
 
@@ -255,8 +267,8 @@ void TestBencodeStringHandlesNonAscii0(
 )
 {
     bencode_t* s;
-    char *str = "6:xxxxxx";
     node_t* dom = calloc(1,sizeof(node_t));
+    char *str = strdup("6:xxxxxx");
 
     /*  127.0.0.1:80 */
     str[2] = 127;

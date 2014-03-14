@@ -45,7 +45,28 @@ static bencode_frame_t* __push_stack(bencode_t* me)
     me->d++;
     if (me->nframes <= me->d)
         return NULL;
-    memset(&me->stk[me->d], 0, sizeof(bencode_frame_t));
+    //memset(&me->stk[me->d], 0, sizeof(bencode_frame_t));
+
+    bencode_frame_t* s = &me->stk[me->d];
+
+    s->pos = 0;
+    s->intval = 0;
+    s->len = 0;
+    s->type = 0;
+
+    if (0 == s->sv_size)
+    {
+        s->sv_size = 20;
+        s->strval = malloc(s->sv_size);
+    }
+
+    if (0 == s->k_size)
+    {
+        s->k_size = 20;
+        s->key = malloc(s->k_size);
+    }
+
+    
     return &me->stk[me->d];
 }
 
@@ -79,6 +100,7 @@ int __process_tok(
             __pop_stack(me);
             break;
         }
+        break;
     case BENCODE_TOK_NONE:
         switch (**buf)
         {
@@ -125,8 +147,8 @@ int __process_tok(
             }
             else
             {
-                printf("%c\n", **buf);
-                assert(0);
+                printf("bad string\n");
+                return 0;
             }
             break;
         }
@@ -138,6 +160,7 @@ int __process_tok(
             // OUTPUT INT
             // POP stack
             f->type = BENCODE_TOK_NONE;
+            printf("integer: %d\n", (int)f->intval);
             me->cb.hit_int(me, NULL, f->intval);
         }
         else if (isdigit(**buf))
@@ -166,24 +189,22 @@ int __process_tok(
         }
 
         break;
-
     case BENCODE_TOK_STR:
         if (f->len == f->pos)
         {
-            me->cb.hit_str(me, NULL, f->len, f->intval);
-        }
-        if (':' == **buf)
-        {
-            f->type = BENCODE_TOK_STR;
-            f->pos = 0;
-        }
-        else if (isdigit(**buf))
-        {
-            f->len += __parse_digit(**buf, f->pos++);
+            printf("showing\n");
+            me->cb.hit_str(me, NULL, f->len, (const unsigned char*)f->strval, 0);
         }
         else
         {
-            assert(0);
+            /* resize string */
+            if (f->sv_size < f->pos)
+            {
+                f->sv_size *= 2;
+                f->strval = realloc(f->strval,f->sv_size);
+            }
+            f->strval[f->pos] = **buf;
+            f->pos += 1;
         }
 
         break;
@@ -208,6 +229,12 @@ int __process_tok(
 
         break;
     case BENCODE_TOK_DICT_KEY:
+        if (f->k_size < f->pos)
+        {
+            f->k_size *= 2;
+            f->key = realloc(f->key,f->k_size);
+        }
+
         if (f->pos == f->len)
         {
             f->key[f->pos] = '\0';
@@ -238,7 +265,14 @@ int bencode_dispatch_from_buffer(
         return 0;
 
     while (0 < len)
-        __process_tok(me,&buf,&len);
+    {
+        switch(__process_tok(me, &buf, &len))
+        {
+            case 0:
+                return 0;
+                break;
+        }
+    }
 
     return 0;
 }

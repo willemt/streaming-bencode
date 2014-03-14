@@ -88,7 +88,10 @@ typedef struct {
 
     /* dict key */
     char* key;
+    int k_size;
 
+    char* strval;
+    int sv_size;
     /* length of key buffer */
 //    int keylen;
 
