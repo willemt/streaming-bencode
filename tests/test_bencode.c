@@ -19,6 +19,30 @@
 
 #include "bencode.h"
 
+#if WIN32
+int asprintf(char **resultp, const char *format, ...)
+{
+    char buf[1024];
+    va_list args;
+
+    va_start(args, format);
+    vsprintf(buf, format, args);
+    *resultp = strdup(buf);
+    va_end(args);
+    return 1;
+}
+
+char* strndup(const char* str, const unsigned int len)
+{
+    char* new;
+
+    new = malloc(len+1);
+    strncpy(new,str,len);
+    new[len] = '\0';
+    return new;
+}
+#endif
+
 enum {
     BENCODE_TYPE_NONE,
     BENCODE_TYPE_INT,
@@ -34,6 +58,7 @@ struct node_s {
     int type;
     int intval;
     char* strval;
+    int sv_len;
     char* dictkey;
     node_t* child;
     node_t* parent;
@@ -44,11 +69,18 @@ struct node_s {
 static node_t* __find_sibling_slot(node_t* n, int depth)
 {
     assert(n);
-    if (BENCODE_TYPE_NONE == n->type) return n;
+    if (BENCODE_TYPE_NONE == n->type)
+    {
+        return n;
+    }
     if (0 == depth)
     {
+        int c = 0;
         while (n->next)
+        {
+            c++;
             n = n->next;
+        }
         n->next = calloc(1, sizeof(node_t));
         n->prev = n;
         return n->next;
@@ -58,7 +90,7 @@ static node_t* __find_sibling_slot(node_t* n, int depth)
         if (!n->child)
         {
             n->child = calloc(1, sizeof(node_t));
-            n->parent = n;
+            n->child->parent = n;
         }
         return __find_sibling_slot(n->child, depth - 1);
     }
@@ -69,18 +101,19 @@ static node_t* __find_child_slot(node_t* n, int depth)
     if (BENCODE_TYPE_NONE == n->type) return n;
     if (0 == depth)
     {
+        /* find empty child slot */
         while (n->next)
             n = n->next;
-        n->child = calloc(1, sizeof(node_t));
-        n->parent = n;
-        return n->child;
+        n->next = calloc(1, sizeof(node_t));
+        n->next->parent = n;
+        return n->next;
     }
     else
     {
         if (!n->child)
         {
             n->child = calloc(1, sizeof(node_t));
-            n->parent = n;
+            n->child->parent = n;
         }
         return __find_child_slot(n->child, depth - 1);
     }
@@ -90,7 +123,6 @@ int __int(bencode_t *s,
         const char *dict_key,
         const long int val)
 {
-    printf("depth: %d\n", s->d);
     node_t* n = __find_sibling_slot(s->udata, s->d);
     n->intval = val;
     n->dictkey = dict_key ? strdup(dict_key) : NULL;
@@ -100,12 +132,15 @@ int __int(bencode_t *s,
 
 int __str(bencode_t *s,
         const char *dict_key,
-        unsigned int val_len __attribute__((__unused__)),
+        unsigned int v_total_len __attribute__((__unused__)),
         const unsigned char* val,
-        unsigned int len __attribute__((__unused__))) 
+        unsigned int v_len) 
 {
     node_t* n = __find_sibling_slot(s->udata, s->d);
-    n->strval = strdup((const char*)val);
+    assert(n);
+    n->strval = malloc(v_len);
+    n->sv_len = v_len;
+    memcpy(n->strval, val, v_len);//strndup((const char*)val, v_len);
     n->dictkey = dict_key ? strdup(dict_key) : NULL;
     n->type = BENCODE_TYPE_STR;
     return 1;
@@ -130,6 +165,9 @@ int __list_enter(bencode_t *s,
 {
     node_t* n = __find_child_slot(s->udata, s->d);
     n->type = BENCODE_TYPE_LIST;
+    n->child = __find_child_slot(s->udata, s->d + 1);
+    assert(n->child);
+    n->child->parent = n;
     return 1;
 }
 
@@ -230,7 +268,7 @@ void TestBencodeStringValue(
     s = bencode_new(2, &__cb, dom);
     CuAssertTrue(tc, 1 == bencode_dispatch_from_buffer(s, str, strlen(str)));
     CuAssertTrue(tc, dom->type == BENCODE_TYPE_STR);
-    CuAssertTrue(tc, 0 == strcmp(dom->strval, "test"));
+    CuAssertTrue(tc, 0 == strncmp(dom->strval, "test", 4));
 }
 
 void TestBencodeStringValue2(
@@ -244,24 +282,7 @@ void TestBencodeStringValue2(
     s = bencode_new(2, &__cb, dom);
     CuAssertTrue(tc, 1 == bencode_dispatch_from_buffer(s, str, strlen(str)));
     CuAssertTrue(tc, dom->type == BENCODE_TYPE_STR);
-    CuAssertTrue(tc, 0 == strcmp(dom->strval, "12:flyinganimal"));
-}
-
-/**
- * The string value function errors when the string is of insufficient length
- * */
-void T_estBencodeStringInvalid(
-    CuTest * tc
-)
-{
-    bencode_t* s;
-    char *str = "5:flyinganimal";
-    node_t* dom = calloc(1,sizeof(node_t));
-
-    s = bencode_new(2, &__cb, dom);
-    CuAssertTrue(tc, 1 == bencode_dispatch_from_buffer(s, str, strlen(str)));
-    CuAssertTrue(tc, dom->type == BENCODE_TYPE_STR);
-    CuAssertTrue(tc, 0 == strcmp(dom->strval, "12:flyinganimal"));
+    CuAssertTrue(tc, 0 == strncmp(dom->strval, "flyinganimal", 12));
 }
 
 void TestBencodeStringHandlesNonAscii0(
@@ -281,7 +302,7 @@ void TestBencodeStringHandlesNonAscii0(
     str[7] = 80;
 
     s = bencode_new(2, &__cb, dom);
-    CuAssertTrue(tc, 1 == bencode_dispatch_from_buffer(s, str, strlen(str)));
+    CuAssertTrue(tc, 1 == bencode_dispatch_from_buffer(s, str, 8));
     CuAssertTrue(tc, dom->type == BENCODE_TYPE_STR);
     CuAssertTrue(tc, dom->strval[0] == 127);
     CuAssertTrue(tc, dom->strval[1] == 0);
@@ -290,6 +311,21 @@ void TestBencodeStringHandlesNonAscii0(
     CuAssertTrue(tc, dom->strval[4] == 0);
     CuAssertTrue(tc, dom->strval[5] == 80);
 }
+
+void TestBencodeStringValueWithColon(
+    CuTest * tc
+)
+{
+    bencode_t* s;
+    char *str = "13:flying:animal";
+    node_t* dom = calloc(1,sizeof(node_t));
+
+    s = bencode_new(2, &__cb, dom);
+    CuAssertTrue(tc, 1 == bencode_dispatch_from_buffer(s, str, strlen(str)));
+    CuAssertTrue(tc, dom->type == BENCODE_TYPE_STR);
+    CuAssertTrue(tc, 0 == strncmp(dom->strval, "flying:animal",13));
+}
+
 
 void TestBencodeIsList(
     CuTest * tc
@@ -304,6 +340,18 @@ void TestBencodeIsList(
     CuAssertTrue(tc, dom->type == BENCODE_TYPE_LIST);
 }
 
+static void print_dom(node_t* dom, int d)
+{
+    int i;
+    for (i=0; i<d; i++)
+        printf("\t");
+    printf("t:%d %.*s\n", dom->type, dom->sv_len, dom->strval);
+    if (dom->next)
+        print_dom(dom->next,d+1);
+    if (dom->child)
+        print_dom(dom->child,d+1);
+}
+
 void TestBencodeListGetNext(
     CuTest * tc
 )
@@ -315,10 +363,13 @@ void TestBencodeListGetNext(
     s = bencode_new(2, &__cb, dom);
     CuAssertTrue(tc, 1 == bencode_dispatch_from_buffer(s, str, strlen(str)));
     CuAssertTrue(tc, dom->type == BENCODE_TYPE_LIST);
-    CuAssertTrue(tc, dom->child != NULL);
+    CuAssertPtrNotNull(tc, dom->child);
     CuAssertTrue(tc, dom->child->type == BENCODE_TYPE_STR);
-    CuAssertTrue(tc, 0 == strcmp(dom->child->strval,"foo"));
-    CuAssertTrue(tc, 0 == strcmp(dom->child->next->strval,"bar"));
+    CuAssertTrue(tc, 0 == strncmp(dom->child->strval,"foo",3));
+    //print_dom(dom, 0);
+    CuAssertPtrNotNull(tc, dom->child->next);
+    CuAssertTrue(tc, dom->child->next->type == BENCODE_TYPE_STR);
+    CuAssertTrue(tc, 0 == strncmp(dom->child->next->strval,"bar",3));
 }
 
 void TestBencodeListInListWithValue(
@@ -329,14 +380,14 @@ void TestBencodeListInListWithValue(
     char *str = "ll3:fooee";
     node_t* dom = calloc(1,sizeof(node_t));
 
-    s = bencode_new(2, &__cb, dom);
+    s = bencode_new(3, &__cb, dom);
     CuAssertTrue(tc, 1 == bencode_dispatch_from_buffer(s, str, strlen(str)));
     CuAssertTrue(tc, dom->type == BENCODE_TYPE_LIST);
     CuAssertTrue(tc, dom->child != NULL);
     CuAssertTrue(tc, dom->child->type == BENCODE_TYPE_LIST);
     CuAssertTrue(tc, dom->child->child != NULL);
     CuAssertTrue(tc, dom->child->child->type == BENCODE_TYPE_STR);
-    CuAssertTrue(tc, 0 == strcmp(dom->child->child->strval,"foo"));
+    CuAssertTrue(tc, 0 == strncmp(dom->child->child->strval,"foo",3));
 }
 
 void TestBencodeListDoesntHasNextWhenEmpty(
@@ -399,7 +450,7 @@ void TestBencodeListGetNextTwiceWhereOnlyOneAvailable(
     CuAssertTrue(tc, dom->type == BENCODE_TYPE_LIST);
     CuAssertTrue(tc, dom->child != NULL);
     CuAssertTrue(tc, dom->child->type == BENCODE_TYPE_STR);
-    CuAssertTrue(tc, 0 == strcmp(dom->child->strval,"test"));
+    CuAssertTrue(tc, 0 == strncmp(dom->child->strval,"test",4));
 }
 
 void TestBencodeListGetNextTwice(
@@ -415,7 +466,7 @@ void TestBencodeListGetNextTwice(
     CuAssertTrue(tc, dom->type == BENCODE_TYPE_LIST);
     CuAssertTrue(tc, dom->child != NULL);
     CuAssertTrue(tc, dom->child->type == BENCODE_TYPE_STR);
-    CuAssertTrue(tc, 0 == strcmp(dom->child->strval,"test"));
+    CuAssertTrue(tc, 0 == strncmp(dom->child->strval,"test",4));
 }
 
 #if 0
@@ -449,8 +500,8 @@ void TestBencodeDictGetNext(
     CuAssertTrue(tc, dom->type == BENCODE_TYPE_DICT);
     CuAssertTrue(tc, dom->child != NULL);
     CuAssertTrue(tc, dom->child->type == BENCODE_TYPE_STR);
-    CuAssertTrue(tc, 0 == strcmp(dom->child->strval,"bar"));
-    CuAssertTrue(tc, 0 == strcmp(dom->child->dictkey,"foo"));
+    CuAssertTrue(tc, 0 == strncmp(dom->child->strval,"bar",3));
+    CuAssertTrue(tc, 0 == strncmp(dom->child->dictkey,"foo",3));
 }
 
 void TestBencodeDictWontGetNextIfEmpty(
@@ -480,12 +531,12 @@ void TestBencodeDictGetNextTwice(
     CuAssertTrue(tc, dom->type == BENCODE_TYPE_DICT);
     CuAssertTrue(tc, dom->child != NULL);
     CuAssertTrue(tc, dom->child->type == BENCODE_TYPE_STR);
-    CuAssertTrue(tc, 0 == strcmp(dom->child->strval,"egg"));
-    CuAssertTrue(tc, 0 == strcmp(dom->child->dictkey,"test"));
+    CuAssertTrue(tc, 0 == strncmp(dom->child->strval,"egg",3));
+    CuAssertTrue(tc, 0 == strncmp(dom->child->dictkey,"test",4));
     CuAssertTrue(tc, dom->child->next != NULL);
     CuAssertTrue(tc, dom->child->next->type == BENCODE_TYPE_STR);
-    CuAssertTrue(tc, 0 == strcmp(dom->child->next->strval,"foo"));
-    CuAssertTrue(tc, 0 == strcmp(dom->child->next->dictkey,"ham"));
+    CuAssertTrue(tc, 0 == strncmp(dom->child->next->strval,"foo",3));
+    CuAssertTrue(tc, 0 == strncmp(dom->child->next->dictkey,"ham",3));
 }
 
 void TestBencodeDictGetNextTwiceOnlyIfSecondKeyValid(
@@ -501,8 +552,8 @@ void TestBencodeDictGetNextTwiceOnlyIfSecondKeyValid(
     CuAssertTrue(tc, dom->type == BENCODE_TYPE_DICT);
     CuAssertTrue(tc, dom->child != NULL);
     CuAssertTrue(tc, dom->child->type == BENCODE_TYPE_STR);
-    CuAssertTrue(tc, 0 == strcmp(dom->child->strval,"egg"));
-    CuAssertTrue(tc, 0 == strcmp(dom->child->dictkey,"test"));
+    CuAssertTrue(tc, 0 == strncmp(dom->child->strval,"egg",3));
+    CuAssertTrue(tc, 0 == strncmp(dom->child->dictkey,"test",4));
     CuAssertTrue(tc, dom->child->next == NULL);
 }
 
@@ -519,13 +570,13 @@ void TestBencodeDictGetNextInnerList(
     CuAssertTrue(tc, dom->type == BENCODE_TYPE_DICT);
     CuAssertTrue(tc, dom->child != NULL);
     CuAssertTrue(tc, dom->child->type == BENCODE_TYPE_LIST);
-    CuAssertTrue(tc, 0 == strcmp(dom->child->dictkey,"key"));
+    CuAssertTrue(tc, 0 == strncmp(dom->child->dictkey,"key",3));
     CuAssertTrue(tc, dom->child->child != NULL);
     CuAssertTrue(tc, dom->child->child->type == BENCODE_TYPE_STR);
-    CuAssertTrue(tc, 0 == strcmp(dom->child->child->strval,"test"));
+    CuAssertTrue(tc, 0 == strncmp(dom->child->child->strval,"test",4));
     CuAssertTrue(tc, dom->child->child->next != NULL);
     CuAssertTrue(tc, dom->child->child->next->type == BENCODE_TYPE_STR);
-    CuAssertTrue(tc, 0 == strcmp(dom->child->child->next->strval,"test"));
+    CuAssertTrue(tc, 0 == strncmp(dom->child->child->next->strval,"test",4));
 }
 
 void TestBencodeDictInnerList(
@@ -542,20 +593,20 @@ void TestBencodeDictInnerList(
 
     CuAssertTrue(tc, dom->child != NULL);
     CuAssertTrue(tc, dom->child->type == BENCODE_TYPE_LIST);
-    CuAssertTrue(tc, 0 == strcmp(dom->child->dictkey,"key"));
+    CuAssertTrue(tc, 0 == strncmp(dom->child->dictkey,"key",3));
 
     CuAssertTrue(tc, dom->child->child != NULL);
     CuAssertTrue(tc, dom->child->child->type == BENCODE_TYPE_STR);
-    CuAssertTrue(tc, 0 == strcmp(dom->child->child->strval,"test"));
+    CuAssertTrue(tc, 0 == strncmp(dom->child->child->strval,"test",4));
 
     CuAssertTrue(tc, dom->child->child->next != NULL);
     CuAssertTrue(tc, dom->child->child->next->type == BENCODE_TYPE_STR);
-    CuAssertTrue(tc, 0 == strcmp(dom->child->child->next->strval,"foo"));
+    CuAssertTrue(tc, 0 == strncmp(dom->child->child->next->strval,"foo",3));
 
     CuAssertTrue(tc, dom->child->next != NULL);
     CuAssertTrue(tc, dom->child->next->type == BENCODE_TYPE_LIST);
-    CuAssertTrue(tc, 0 == strcmp(dom->child->next->dictkey,"foo"));
-    CuAssertTrue(tc, 0 == strcmp(dom->child->next->strval,"bar"));
+    CuAssertTrue(tc, 0 == strncmp(dom->child->next->dictkey,"foo",3));
+    CuAssertTrue(tc, 0 == strncmp(dom->child->next->strval,"bar",3));
 }
 
 void TestBencodeStringValueIsZeroLength(
@@ -572,11 +623,11 @@ void TestBencodeStringValueIsZeroLength(
 
     CuAssertTrue(tc, dom->child != NULL);
     CuAssertTrue(tc, dom->child->type == BENCODE_TYPE_LIST);
-    CuAssertTrue(tc, 0 == strcmp(dom->child->dictkey,"interval"));
+    CuAssertTrue(tc, 0 == strncmp(dom->child->dictkey,"interval",8));
     CuAssertTrue(tc, 1800 == dom->child->intval);
 
     CuAssertTrue(tc, dom->child->next != NULL);
     CuAssertTrue(tc, dom->child->next->type == BENCODE_TYPE_STR);
-    CuAssertTrue(tc, 0 == strcmp(dom->child->next->strval,""));
-    CuAssertTrue(tc, 0 == strcmp(dom->child->next->dictkey,""));
+    CuAssertTrue(tc, 0 == strncmp(dom->child->next->strval,"",0));
+    CuAssertTrue(tc, 0 == strncmp(dom->child->next->dictkey,"",0));
 }

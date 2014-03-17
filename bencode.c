@@ -31,7 +31,7 @@ bencode_t* bencode_new(
     bencode_set_callbacks(me, cb);
     me->udata = udata;
     me->nframes = expected_depth;
-    me->stk = calloc(1, sizeof(bencode_frame_t) * expected_depth);
+    me->stk = calloc(10 + expected_depth, sizeof(bencode_frame_t));
     return me;
 }
 
@@ -42,9 +42,13 @@ void bencode_init(bencode_t* me)
 
 static bencode_frame_t* __push_stack(bencode_t* me)
 {
-    me->d++;
     if (me->nframes <= me->d)
+    {
+        assert(0);
         return NULL;
+    }
+
+    me->d++;
     //memset(&me->stk[me->d], 0, sizeof(bencode_frame_t));
 
     bencode_frame_t* s = &me->stk[me->d];
@@ -65,7 +69,6 @@ static bencode_frame_t* __push_stack(bencode_t* me)
         s->k_size = 20;
         s->key = malloc(s->k_size);
     }
-
     
     return &me->stk[me->d];
 }
@@ -74,8 +77,7 @@ static bencode_frame_t* __pop_stack(bencode_t* me)
 {
     if (me->d <= 0)
         return NULL;
-    me->d--;
-    return &me->stk[me->d];
+    return &me->stk[me->d--];
 }
 
 static int __parse_digit(const int current_value, const char c)
@@ -83,12 +85,42 @@ static int __parse_digit(const int current_value, const char c)
     return (c - '0') + current_value * 10;
 }
 
-int __process_tok(
+static void __start_int(bencode_frame_t* f)
+{
+    f->type = BENCODE_TOK_INT;
+    f->pos = 0;
+}
+
+static void __start_dict(bencode_t* me, bencode_frame_t* f)
+{
+    f->type = BENCODE_TOK_DICT_KEYLEN;
+    f->pos = 0;
+    if (me->cb.dict_enter)
+        me->cb.dict_enter(me, NULL);
+}
+
+static void __start_list(bencode_t* me, bencode_frame_t* f)
+{
+    f->type = BENCODE_TOK_LIST;
+    f->pos = 0;
+    if (me->cb.list_enter)
+        me->cb.list_enter(me, NULL);
+}
+
+static void __start_str(bencode_frame_t* f)
+{
+    f->type = BENCODE_TOK_STR_LEN;
+    f->pos = 0;
+}
+
+static int __process_tok(
         bencode_t* me,
         const char** buf,
         unsigned int *len)
 {
     bencode_frame_t* f = &me->stk[me->d];
+
+//    printf(" %c\n", **buf);
 
     switch (f->type)
     {
@@ -99,58 +131,58 @@ int __process_tok(
         case 'e':
             __pop_stack(me);
             break;
-        }
-        break;
-    case BENCODE_TOK_NONE:
-        switch (**buf)
-        {
-
-        /* starting an integer */
         case 'i':
             f = __push_stack(me);
-            f->type = BENCODE_TOK_INT;
-            f->pos = 0;
+            __start_int(f);
             break;
-
-        /* starting a dictionary */
         case 'd':
             f = __push_stack(me);
-            f->type = BENCODE_TOK_DICT_KEYLEN;
-            f->pos = 0;
-            if (me->cb.dict_enter)
-                me->cb.dict_enter(me, NULL);
+            __start_dict(me,f);
             break;
-
-        /* starting a list */
         case 'l':
             f = __push_stack(me);
-            f->type = BENCODE_TOK_LIST;
-            f->pos = 0;
-            if (me->cb.list_enter)
-                me->cb.list_enter(me, NULL);
+            __start_list(me,f);
             break;
-
-        case 'e':
-            f = __push_stack(me);
-            f->type = BENCODE_TOK_DICT_KEYLEN;
-            f->pos = 0;
-            break;
-
         /* calculating length of string */
         default:
             if (isdigit(**buf))
             {
                 f = __push_stack(me);
-                f->type = BENCODE_TOK_STR_LEN;
-                f->pos = 0;
+                __start_str(f);
                 f->len = __parse_digit(f->len, **buf);
             }
             else
             {
-                printf("bad string\n");
                 return 0;
             }
             break;
+        }
+        break;
+    case BENCODE_TOK_NONE:
+        switch (**buf)
+        {
+        case 'i':
+            __start_int(f);
+            break;
+        case 'd':
+            __start_dict(me,f);
+            break;
+        case 'l':
+            __start_list(me,f);
+            break;
+        /* calculating length of string */
+        default:
+            if (isdigit(**buf))
+            {
+                __start_str(f);
+                f->len = __parse_digit(f->len, **buf);
+            }
+            else
+            {
+                return 0;
+            }
+            break;
+
         }
         break;
 
@@ -160,7 +192,6 @@ int __process_tok(
             // OUTPUT INT
             // POP stack
             f->type = BENCODE_TOK_NONE;
-            printf("integer: %d\n", (int)f->intval);
             me->cb.hit_int(me, NULL, f->intval);
         }
         else if (isdigit(**buf))
@@ -190,21 +221,22 @@ int __process_tok(
 
         break;
     case BENCODE_TOK_STR:
+
+        /* resize string
+         * +1 incase we also need to count for '\0' terminator */
+        if (f->sv_size <= f->pos + 1)
+        {
+            f->sv_size = 4 + f->sv_size * 2;
+            f->strval = realloc(f->strval,f->sv_size);
+        }
+        f->strval[f->pos++] = **buf;
+
         if (f->len == f->pos)
         {
-            printf("showing\n");
-            me->cb.hit_str(me, NULL, f->len, (const unsigned char*)f->strval, 0);
-        }
-        else
-        {
-            /* resize string */
-            if (f->sv_size < f->pos)
-            {
-                f->sv_size *= 2;
-                f->strval = realloc(f->strval,f->sv_size);
-            }
-            f->strval[f->pos] = **buf;
-            f->pos += 1;
+            f->strval[f->pos] = 0;
+            me->cb.hit_str(me, NULL, f->len,
+                    (const unsigned char*)f->strval, f->len);
+            f = __pop_stack(me);
         }
 
         break;
@@ -224,26 +256,23 @@ int __process_tok(
         }
         else
         {
-            assert(0);
+            return 0;
         }
 
         break;
     case BENCODE_TOK_DICT_KEY:
-        if (f->k_size < f->pos)
+        if (f->k_size <= f->pos + 1)
         {
-            f->k_size *= 2;
+            f->k_size = f->k_size * 2 + 4;
             f->key = realloc(f->key,f->k_size);
         }
+
+        f->key[f->pos] = **buf; 
 
         if (f->pos == f->len)
         {
             f->key[f->pos] = '\0';
-            printf("END DICT KEY %s\n", f->key);
             f = __push_stack(me);
-        }
-        else
-        {
-            f->key[f->pos] = **buf; 
         }
         break;
 

@@ -33,16 +33,21 @@ typedef struct {
             const long int val);
 
     /**
+     * Call when there is some string for us to read.
+     * This callback could fire multiple times for large strings
+     *
      * @param dict_key The dictionary key for this item.
      *        This is set to null for list entries
      * @param val The string value
+     * @param v_total_len The total length of the string
+     * @param v_len The length of the string we're currently emitting
      * @return 0 on error; otherwise 1
      */
     int (*hit_str)(bencode_t *s,
         const char *dict_key,
-        unsigned int val_len,
+        unsigned int v_total_len,
         const unsigned char* val,
-        unsigned int len);
+        unsigned int v_len);
 
     /**
      * @param dict_key The dictionary key for this item.
