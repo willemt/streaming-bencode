@@ -10,6 +10,8 @@ enum {
     BENCODE_TOK_DICT_KEYLEN,
     /* a dictionary key */
     BENCODE_TOK_DICT_KEY,
+    /* a dictionary value */
+    BENCODE_TOK_DICT_VAL,
     /* an integer */
     BENCODE_TOK_INT,
     /* the length of the string */

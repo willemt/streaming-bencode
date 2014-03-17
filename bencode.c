@@ -124,10 +124,11 @@ static int __process_tok(
 
     switch (f->type)
     {
+    case BENCODE_TOK_DICT_VAL:
     case BENCODE_TOK_LIST:
         switch (**buf)
         {
-        /* end of list */
+        /* end of list/dict */
         case 'e':
             __pop_stack(me);
             break;
@@ -267,12 +268,15 @@ static int __process_tok(
             f->key = realloc(f->key,f->k_size);
         }
 
-        f->key[f->pos] = **buf; 
+        f->key[f->pos++] = **buf; 
 
         if (f->pos == f->len)
         {
+            //printf("key: %.*s\n", f->pos,f->key);
             f->key[f->pos] = '\0';
             f = __push_stack(me);
+            f->type = BENCODE_TOK_DICT_VAL;
+            f->pos = 0;
         }
         break;
 
