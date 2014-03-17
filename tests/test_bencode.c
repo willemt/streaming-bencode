@@ -44,6 +44,7 @@ struct node_s {
 static node_t* __find_sibling_slot(node_t* n, int depth)
 {
     assert(n);
+    if (BENCODE_TYPE_NONE == n->type) return n;
     if (0 == depth)
     {
         while (n->next)
@@ -65,6 +66,7 @@ static node_t* __find_sibling_slot(node_t* n, int depth)
 
 static node_t* __find_child_slot(node_t* n, int depth)
 {
+    if (BENCODE_TYPE_NONE == n->type) return n;
     if (0 == depth)
     {
         while (n->next)
@@ -168,13 +170,13 @@ void TestBencodeIntValue(
 )
 {
     bencode_t* s;
-    char *str = "i777e";
+    char *str = "i123e";
     node_t* dom = calloc(1,sizeof(node_t));
 
     s = bencode_new(2, &__cb, dom);
     CuAssertTrue(tc, 1 == bencode_dispatch_from_buffer(s, str, strlen(str)));
     CuAssertTrue(tc, dom->type == BENCODE_TYPE_INT);
-    CuAssertTrue(tc, 777 == dom->intval);
+    CuAssertTrue(tc, 123 == dom->intval);
 }
 
 void TestBencodeIntValue2(
