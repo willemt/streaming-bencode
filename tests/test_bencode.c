@@ -195,6 +195,47 @@ static bencode_callbacks_t __cb = {
     .list_next = __list_next
 };
 
+void TestBencodeTest_add_sibling_adds_sibling(
+    CuTest * tc
+)
+{
+    node_t* dom = calloc(1,sizeof(node_t));
+    node_t* n;
+
+    n = __find_sibling_slot(dom, 2);
+    n->type = BENCODE_TYPE_INT;
+    CuAssertTrue(tc, n == dom);
+
+    n = __find_sibling_slot(dom, 2);
+    CuAssertTrue(tc, n != dom);
+    CuAssertTrue(tc, dom->next == n);
+    CuAssertTrue(tc, dom == n->prev);
+    CuAssertTrue(tc, !dom->child);
+    CuAssertTrue(tc, !dom->next->parent);
+}
+
+void TestBencodeTest_add_child_adds_child(
+    CuTest * tc
+)
+{
+    node_t* dom = calloc(1,sizeof(node_t));
+    node_t* n;
+
+    n = __find_sibling_slot(dom, 2);
+    n->type = BENCODE_TYPE_INT;
+    CuAssertTrue(tc, n == dom);
+
+    n = __find_child_slot(dom, 2);
+    CuAssertTrue(tc, n != dom);
+    CuAssertTrue(tc, !dom->next);
+    CuAssertTrue(tc, dom == n->parent);
+    CuAssertTrue(tc, dom->child == n);
+    CuAssertTrue(tc, !dom->next);
+    CuAssertTrue(tc, !dom->prev);
+    CuAssertTrue(tc, !n->next);
+    CuAssertTrue(tc, !n->prev);
+}
+
 void TestBencode_fail_if_depth_not_sufficient(
     CuTest * tc
 )
