@@ -1,7 +1,7 @@
 CStreamingBencodeReader
 =======================
 .. image:: https://travis-ci.org/willemt/CStreamingBencodeReader.png
-   :target: https://travis-ci.org/willemt/CStreamingBencodereader
+   :target: https://travis-ci.org/willemt/CStreamingBencodeReader
 
 .. image:: https://coveralls.io/repos/willemt/CStreamingBencodeReader/badge.png?branch=master
   :target: https://coveralls.io/r/willemt/CStreamingBencodeReader?branch=master
