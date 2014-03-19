@@ -17,7 +17,8 @@ enum {
     /* the length of the string */
     BENCODE_TOK_STR_LEN,
     /* string */
-    BENCODE_TOK_STR
+    BENCODE_TOK_STR,
+    BENCODE_TOK_DICT
 }; 
 
 typedef struct bencode_s bencode_t;
