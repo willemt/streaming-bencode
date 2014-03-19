@@ -132,7 +132,7 @@ static int __process_tok(
         {
         /* end of list/dict */
         case 'e':
-            __pop_stack(me);
+            f = __pop_stack(me);
             break;
         case 'i':
             f = __push_stack(me);
@@ -195,10 +195,8 @@ static int __process_tok(
     case BENCODE_TOK_INT:
         if ('e' == **buf)
         {
-            // OUTPUT INT
-            // POP stack
-            f->type = BENCODE_TOK_NONE;
             me->cb.hit_int(me, f->key, f->intval);
+            f = __pop_stack(me);
         }
         else if (isdigit(**buf))
         {
@@ -213,8 +211,16 @@ static int __process_tok(
     case BENCODE_TOK_STR_LEN:
         if (':' == **buf)
         {
-            f->type = BENCODE_TOK_STR;
-            f->pos = 0;
+            if (0 == f->len)
+            {
+                me->cb.hit_str(me, f->key, 0, NULL, 0);
+                f = __pop_stack(me);
+            }
+            else
+            {
+                f->type = BENCODE_TOK_STR;
+                f->pos = 0;
+            }
         }
         else if (isdigit(**buf))
         {
@@ -249,7 +255,7 @@ static int __process_tok(
     case BENCODE_TOK_DICT:
         if ('e' == **buf)
         {
-            __pop_stack(me);
+            f = __pop_stack(me);
             goto done;
         }
 
@@ -267,8 +273,10 @@ static int __process_tok(
         {
             f->len = __parse_digit(f->len, **buf);
         }
+        /* end of dictionary */
         else if ('e' == **buf)
         {
+            //return 0;
             f = __pop_stack(me);
         }
         else

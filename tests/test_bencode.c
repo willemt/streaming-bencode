@@ -385,23 +385,24 @@ void TestBencodeIsList(
 }
 
 #if 0 /* debugging */
-static void print_dom(node_t* dom, int d)
+static void print_dom(node_t* n, int d)
 {
     int i;
-    printf("t:%d %.*s\n", dom->type, dom->sv_len, dom->strval);
+    printf("t:%d v:(%.*s %d) k: %s\n",
+            n->type, n->sv_len, n->strval, n->intval, n->dictkey);
 
-    if (dom->child)
+    if (n->child)
     {
         for (i=0; i<d; i++) printf("\t");
         printf("[c]");
-        print_dom(dom->child,d+1);
+        print_dom(n->child,d+1);
     }
 
-    if (dom->next)
+    if (n->next)
     {
         for (i=0; i<d; i++) printf("\t");
         printf("[s]");
-        print_dom(dom->next,d);
+        print_dom(n->next,d);
     }
 }
 #endif
@@ -697,6 +698,6 @@ void TestBencodeStringValueIsZeroLength(
 
     CuAssertPtrNotNull(tc, dom->child->next);
     CuAssertTrue(tc, dom->child->next->type == BENCODE_TYPE_STR);
-    CuAssertTrue(tc, 0 == strncmp(dom->child->next->strval,"",0));
-    CuAssertTrue(tc, 0 == strncmp(dom->child->next->dictkey,"",0));
+    CuAssertTrue(tc, 0 == strncmp(dom->child->next->dictkey,"peers",5));
+    CuAssertPtrNotNull(tc, dom->child->next->strval);
 }
