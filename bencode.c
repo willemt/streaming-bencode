@@ -76,10 +76,8 @@ static bencode_frame_t* __push_stack(bencode_t* me)
 static bencode_frame_t* __pop_stack(bencode_t* me)
 {
     bencode_frame_t* f;
-    if (me->d <= 0)
-        return NULL;
 
-    f = &me->stk[me->d--];
+    f = &me->stk[me->d];
 
     switch(f->type)
     {
@@ -93,7 +91,10 @@ static bencode_frame_t* __pop_stack(bencode_t* me)
             break;
     }
 
-    f = &me->stk[me->d];
+    if (me->d == 0)
+        return NULL;
+
+    f = &me->stk[--me->d];
 
     switch(f->type)
     {
