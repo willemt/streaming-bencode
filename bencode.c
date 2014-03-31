@@ -75,9 +75,39 @@ static bencode_frame_t* __push_stack(bencode_t* me)
 
 static bencode_frame_t* __pop_stack(bencode_t* me)
 {
+    bencode_frame_t* f;
     if (me->d <= 0)
         return NULL;
-    return &me->stk[me->d--];
+
+    f = &me->stk[me->d--];
+
+    switch(f->type)
+    {
+        case BENCODE_TOK_LIST:
+            if (me->cb.list_leave)
+                me->cb.list_leave(me, f->key);
+            break;
+        case BENCODE_TOK_DICT:
+            if (me->cb.dict_leave)
+                me->cb.dict_leave(me, f->key);
+            break;
+    }
+
+    f = &me->stk[me->d];
+
+    switch(f->type)
+    {
+        case BENCODE_TOK_LIST:
+            if (me->cb.list_next)
+                me->cb.list_next(me);
+            break;
+        case BENCODE_TOK_DICT:
+            if (me->cb.dict_next)
+                me->cb.dict_next(me);
+            break;
+    }
+
+    return f;
 }
 
 static int __parse_digit(const int current_value, const char c)

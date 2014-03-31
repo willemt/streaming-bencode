@@ -64,6 +64,10 @@ struct node_s {
     node_t* parent;
     node_t* next;
     node_t* prev;
+
+    /* for testing (list|dict)_next() callback */
+    int list_next_called;
+    int dict_next_called;
 };
 
 static node_t* __find_sibling_slot(node_t* n, int depth)
@@ -182,8 +186,18 @@ int __list_leave(bencode_t *s __attribute__((__unused__)),
 
 int __list_next(bencode_t *s __attribute__((__unused__)))
 {
+    node_t* n = s->udata;
+    n->list_next_called += 1;
     return 1;
 }
+
+int __dict_next(bencode_t *s __attribute__((__unused__)))
+{
+    node_t* n = s->udata;
+    n->dict_next_called += 1;
+    return 1;
+}
+
 
 static bencode_callbacks_t __cb = {
     .hit_int = __int,
@@ -192,7 +206,8 @@ static bencode_callbacks_t __cb = {
     .dict_leave = __dict_leave,
     .list_enter = __list_enter,
     .list_leave = __list_leave,
-    .list_next = __list_next
+    .list_next = __list_next,
+    .dict_next = __dict_next
 };
 
 void TestBencodeTest_add_sibling_adds_sibling(
@@ -701,3 +716,30 @@ void TestBencodeStringValueIsZeroLength(
     CuAssertTrue(tc, 0 == strncmp(dom->child->next->dictkey,"peers",5));
     CuAssertPtrNotNull(tc, dom->child->next->strval);
 }
+
+void TestBencodeListNextGetsCalled(
+    CuTest * tc
+)
+{
+    bencode_t* s;
+    char *str = "l4:test3:fooe";
+    node_t* dom = calloc(1,sizeof(node_t));
+
+    s = bencode_new(10, &__cb, dom);
+    CuAssertTrue(tc, 1 == bencode_dispatch_from_buffer(s, str, strlen(str)));
+    CuAssertTrue(tc, dom->list_next_called == 2);
+}
+
+void TestBencodeDictNextGetsCalled(
+    CuTest * tc
+)
+{
+    bencode_t* s;
+    char *str = "d3:keyl4:test3:fooe4:testi999ee";
+    node_t* dom = calloc(1,sizeof(node_t));
+
+    s = bencode_new(10, &__cb, dom);
+    CuAssertTrue(tc, 1 == bencode_dispatch_from_buffer(s, str, strlen(str)));
+    CuAssertTrue(tc, dom->dict_next_called == 2);
+}
+

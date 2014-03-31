@@ -61,6 +61,7 @@ typedef struct {
     int (*dict_enter)(bencode_t *s,
             const char *dict_key);
     /**
+     * Called when we have finished processing a dictionary
      * @param dict_key The dictionary key for this item.
      *        This is set to null for list entries
      * @param val The integer value
@@ -85,10 +86,16 @@ typedef struct {
     int (*list_leave)(bencode_t *s,
             const char *dict_key);
     /**
-     * @param val The integer value
+     * Called when we have just finished processing a list item
      * @return 0 on error; otherwise 1
      */
     int (*list_next)(bencode_t *s);
+
+    /**
+     * Called when we have just finished processing a dict item
+     * @return 0 on error; otherwise 1
+     */
+    int (*dict_next)(bencode_t *s);
 
 } bencode_callbacks_t;
 
