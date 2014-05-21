@@ -1,0 +1,9 @@
+{
+  "name": "streaming-bencode",
+  "version": "0.0.1",
+  "repo": "willemt/streaming-bencode",
+  "description": "Bencode reader that works on streams",
+  "keywords": ["streaming", "bencode", "bittorrent", "torrent", "serialization"],
+  "license": "BSD",
+  "src": ["bencode.c", "bencode.h"]
+}
